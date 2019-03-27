@@ -65,3 +65,35 @@ class SmallerVGGNet:
 
 		# return the constructed network architecture
 		return model
+
+	def build2(width, height, depth, classes):
+		model = Sequential()
+		inputShape = (height, width, depth)
+		chanDim = -1
+
+		# if we are using "channels first", update the input shape
+		# and channels dimension
+		if K.image_data_format() == "channels_first":
+			inputShape = (depth, height, width)
+			chanDim = 1
+
+		num_channels = 64
+		bn_momentum = 0.9
+		model.add(Conv2D(num_channels, (3, 3), padding="same", input_shape=inputShape))
+		model.add(BatchNormalization(axis=chanDim))
+		model.add(Activation("relu"))
+		model.add(MaxPooling2D(pool_size=(2, 2)))
+		channels = [num_channels * 2, num_channels * 4, num_channels * 8]
+		for i, c in enumerate(channels):
+			model.add(Conv2D(c, (3, 3), padding="same"))
+			model.add(BatchNormalization(axis=chanDim))
+			model.add(Activation("relu"))
+			model.add(MaxPooling2D(pool_size=(2, 2)))
+
+		model.add(Flatten())
+		model.add(Dense(num_channels * 8))
+		model.add(BatchNormalization(axis=chanDim))
+		model.add(Activation("relu"))
+		model.add(Dense(classes))
+
+		return model

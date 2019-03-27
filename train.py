@@ -32,13 +32,13 @@ ap.add_argument("-l", "--labelbin", required=True,
 ap.add_argument("-p", "--plot", type=str, default="plot.png",
 	help="path to output accuracy/loss plot")
 args = vars(ap.parse_args())
-
+# /home/ai309/metwalli/project-test-1/dense_food/experiments/vireo10_aug4
 # initialize the number of epochs to train for, initial learning rate,
 # batch size, and image dimensions
-EPOCHS = 100
+EPOCHS = 10
 INIT_LR = 1e-3
 BS = 32
-IMAGE_DIMS = (96, 96, 3)
+IMAGE_DIMS = (64, 64, 3)
 
 # initialize the data and labels
 data = []
@@ -79,13 +79,15 @@ labels = lb.fit_transform(labels)
 	labels, test_size=0.2, random_state=42)
 
 # construct the image generator for data augmentation
-aug = ImageDataGenerator(rotation_range=25, width_shift_range=0.1,
-	height_shift_range=0.1, shear_range=0.2, zoom_range=0.2,
-	horizontal_flip=True, fill_mode="nearest")
+# aug = ImageDataGenerator(rotation_range=25, width_shift_range=0.1,
+# 	height_shift_range=0.1, shear_range=0.2, zoom_range=0.2,
+# 	horizontal_flip=True, fill_mode="nearest")
+
+aug = ImageDataGenerator()
 
 # initialize the model
 print("[INFO] compiling model...")
-model = SmallerVGGNet.build(width=IMAGE_DIMS[1], height=IMAGE_DIMS[0],
+model = SmallerVGGNet.build2(width=IMAGE_DIMS[1], height=IMAGE_DIMS[0],
 	depth=IMAGE_DIMS[2], classes=len(lb.classes_))
 opt = Adam(lr=INIT_LR, decay=INIT_LR / EPOCHS)
 model.compile(loss="categorical_crossentropy", optimizer=opt,
