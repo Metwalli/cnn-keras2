@@ -23,6 +23,35 @@ import pickle
 import cv2
 import os
 
+
+def load_dataset(imagePaths):
+    data = []
+    labels = []
+    # loop over the input images
+    for imagePath in imagePaths:
+        # load the image, pre-process it, and store it in the data list
+        image = cv2.imread(imagePath)
+        image = cv2.resize(image, (IMAGE_DIMS[1], IMAGE_DIMS[0]))
+        image = img_to_array(image)
+        data.append(image)
+
+        # extract the class label from the image path and update the
+        # labels list
+        label = imagePath.split(os.path.sep)[-2]
+        labels.append(label)
+
+    # scale the raw pixel intensities to the range [0, 1]
+    data = np.array(data, dtype="float") / 255.0
+    labels = np.array(labels)
+    print("[INFO] data matrix: {:.2f}MB".format(
+        data.nbytes / (1024 * 1000.0)))
+
+    # binarize the labels
+    lb = LabelBinarizer()
+    labels = lb.fit_transform(labels)
+
+    return data, labels, lb
+
 # construct the argument parse and parse the arguments
 ap = argparse.ArgumentParser()
 ap.add_argument("-d", "--dataset", required=True,
@@ -43,42 +72,24 @@ BS = 32
 IMAGE_DIMS = (64, 64, 3)
 
 # initialize the data and labels
-data = []
-labels = []
+
 
 # grab the image paths and randomly shuffle them
 print("[INFO] loading images...")
-imagePaths = sorted(list(paths.list_images(args["dataset"])))
+imagePaths = sorted(list(paths.list_images(os.path.join(args["dataset"], "train"))))
 random.seed(42)
 random.shuffle(imagePaths)
 
-# loop over the input images
-for imagePath in imagePaths:
-    # load the image, pre-process it, and store it in the data list
-    image = cv2.imread(imagePath)
-    image = cv2.resize(image, (IMAGE_DIMS[1], IMAGE_DIMS[0]))
-    image = img_to_array(image)
-    data.append(image)
+trainX, trainY, lb = load_dataset(imagePaths)
+imagePaths = sorted(list(paths.list_images(os.path.join(args["dataset"], "test"))))
+random.seed(42)
+random.shuffle(imagePaths)
 
-    # extract the class label from the image path and update the
-    # labels list
-    label = imagePath.split(os.path.sep)[-2]
-    labels.append(label)
-
-# scale the raw pixel intensities to the range [0, 1]
-data = np.array(data, dtype="float") / 255.0
-labels = np.array(labels)
-print("[INFO] data matrix: {:.2f}MB".format(
-    data.nbytes / (1024 * 1000.0)))
-
-# binarize the labels
-lb = LabelBinarizer()
-labels = lb.fit_transform(labels)
-
+testX, testY, lb = load_dataset(imagePaths)
 # partition the data into training and testing splits using 80% of
 # the data for training and the remaining 20% for testing
-(trainX, testX, trainY, testY) = train_test_split(data,
-                                                  labels, test_size=0.2, random_state=42)
+# (trainX, testX, trainY, testY) = train_test_split(data,
+#                                                   labels, test_size=0.2, random_state=42)
 
 # construct the image generator for data augmentation
 aug = ImageDataGenerator(rotation_range=25, width_shift_range=0.1,
@@ -107,10 +118,10 @@ print("[INFO] serializing network...")
 model.save(args["model"])
 
 # save the label binarizer to disk
-print("[INFO] serializing label binarizer...")
-f = open(args["labelbin"], "wb")
-f.write(pickle.dumps(lb))
-f.close()
+# print("[INFO] serializing label binarizer...")
+# f = open(args["labelbin"], "wb")
+# f.write(pickle.dumps(lb))
+# f.close()
 
 # plot the training loss and accuracy
 plt.style.use("ggplot")
