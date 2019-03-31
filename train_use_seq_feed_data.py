@@ -21,6 +21,9 @@ import pickle
 import cv2
 import os
 
+from feed_data_seq import Data_Generator
+
+
 # construct the argument parse and parse the arguments
 ap = argparse.ArgumentParser()
 ap.add_argument("-d", "--dataset", required=True,
@@ -32,75 +35,39 @@ ap.add_argument("-l", "--labelbin", required=True,
 ap.add_argument("-p", "--plot", type=str, default="plot.png",
 	help="path to output accuracy/loss plot")
 args = vars(ap.parse_args())
+
+def get_labels(imagePaths):
+	labels = []
+	for imagePath in imagePaths:
+		# extract the class label from the image path and update the
+		# labels list
+		label = imagePath.split(os.path.sep)[-2]
+		labels.append(label)
+	return labels
 # /home/ai309/metwalli/project-test-1/dense_food/experiments/vireo10_aug4
 # initialize the number of epochs to train for, initial learning rate,
 # batch size, and image dimensions
 EPOCHS = 10
 INIT_LR = 1e-3
-BS = 32
+BATCH_SIZE = 16
 IMAGE_DIMS = (64, 64, 3)
-
+N_CLASSES = 10
 # initialize the data and labels
-trainX = []
-trainY = []
-
+data = []
+train_labels = []
+eval_labels = []
 # grab the image paths and randomly shuffle them
 print("[INFO] loading images...")
-train_filenames = sorted(list(paths.list_images(os.path.join(args["dataset"],"train"))))
+train_filenames = sorted(list(paths.list_images(os.path.join(args["dataset"], "train"))))
 random.seed(42)
 random.shuffle(train_filenames)
+train_labels = get_labels(train_filenames)
 
-# loop over the input images
-for imagePath in train_filenames:
-	print(imagePath)
-	# load the image, pre-process it, and store it in the data list
-	image = cv2.imread(imagePath)
-	image = cv2.resize(image, (IMAGE_DIMS[1], IMAGE_DIMS[0]))
-	image = img_to_array(image)
-	trainX.append(image)
-	# extract the class label from the image path and update the
-	# labels list
-	label = imagePath.split(os.path.sep)[-2]
-	trainY.append(label)
-data = np.array(trainX, dtype="float") / 255.0
-labels = np.array(trainY)
-print("[INFO] data matrix: {:.2f}MB".format(
-	trainX.nbytes / (1024 * 1000.0)))
-# binarize the labels
-lb = LabelBinarizer()
-trainY = lb.fit_transform(trainY)
+eval_filenames = sorted(list(paths.list_images(os.path.join(args["dataset"], "test"))))
+eval_labels = get_labels(eval_filenames)
 
-testX = []
-testY = []
-test_filenames = sorted(list(paths.list_images(os.path.join(args["dataset"], "test"))))
-random.seed(42)
-random.shuffle(test_filenames)
-
-for imagePath in test_filenames:
-	# load the image, pre-process it, and store it in the data list
-	image = cv2.imread(imagePath)
-	image = cv2.resize(image, (IMAGE_DIMS[1], IMAGE_DIMS[0]))
-	image = img_to_array(image)
-	testX.append(image)
-
-	# extract the class label from the image path and update the
-	# labels list
-	label = imagePath.split(os.path.sep)[-2]
-	testY.append(label)
-# scale the raw pixel intensities to the range [0, 1]
-testX = np.array(data, dtype="float") / 255.0
-testY = np.array(testY)
-print("[INFO] data matrix: {:.2f}MB".format(
-	testX.nbytes / (1024 * 1000.0)))
-
-# binarize the labels
-lb = LabelBinarizer()
-testY = lb.fit_transform(testY)
-
-# partition the data into training and testing splits using 80% of
-# the data for training and the remaining 20% for testing
-# (trainX, testX, trainY, testY) = train_test_split(data,
-# 	labels, test_size=0.2, random_state=42)
+my_training_batch_generator = Data_Generator(image_filenames=train_filenames, labels=train_labels, batch_size=BATCH_SIZE)
+my_validation_batch_generator = Data_Generator(image_filenames=eval_filenames, labels=eval_labels, batch_size=BATCH_SIZE)
 
 # construct the image generator for data augmentation
 aug = ImageDataGenerator(rotation_range=25, width_shift_range=0.1,
@@ -110,18 +77,19 @@ aug = ImageDataGenerator(rotation_range=25, width_shift_range=0.1,
 # initialize the model
 print("[INFO] compiling model...")
 model = SmallerVGGNet.build2(width=IMAGE_DIMS[1], height=IMAGE_DIMS[0],
-	depth=IMAGE_DIMS[2], classes=len(lb.classes_))
+	depth=IMAGE_DIMS[2], classes=N_CLASSES)
 opt = Adam(lr=INIT_LR, decay=INIT_LR / EPOCHS)
 model.compile(loss="categorical_crossentropy", optimizer=opt,
 	metrics=["accuracy"])
 
 # train the network
 print("[INFO] training network...")
-H = model.fit_generator(
-	aug.flow(trainX, trainY, batch_size=BS),
-	validation_data=(testX, testY),
-	steps_per_epoch=len(trainX) // BS,
-	epochs=EPOCHS, verbose=1)
+H = model.fit_generator(generator=my_training_batch_generator,
+                                          steps_per_epoch=(len(train_filenames) // BATCH_SIZE),
+                                          epochs=EPOCHS,
+                                          verbose=1,
+                                          validation_data=my_validation_batch_generator,
+                                          validation_steps=(len(eval_filenames) // BATCH_SIZE))
 
 # save the model to disk
 print("[INFO] serializing network...")

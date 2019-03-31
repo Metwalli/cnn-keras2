@@ -91,7 +91,7 @@ class SmallerVGGNet:
 			model.add(MaxPooling2D(pool_size=(2, 2)))
 
 		model.add(Flatten())
-		model.add(Dense(num_channels * 8))
+		model.add(Dense(8192))
 		model.add(BatchNormalization(axis=chanDim))
 		model.add(Activation("relu"))
 		model.add(Dense(classes))
