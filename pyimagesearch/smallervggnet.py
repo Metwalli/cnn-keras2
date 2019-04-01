@@ -1,4 +1,6 @@
 # import the necessary packages
+import tensorflow as tf
+from tensorflow import keras
 from keras.models import Sequential, Model
 from keras.layers.normalization import BatchNormalization
 from keras.layers.convolutional import Conv2D

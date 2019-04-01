@@ -71,6 +71,7 @@ EPOCHS = 100
 INIT_LR = 1e-3
 BS = 16
 IMAGE_DIMS = (224, 224, 3)
+N_CLASSES = 10
 
 # initialize the data and labels
 
@@ -103,7 +104,7 @@ aug = ImageDataGenerator()
 print("[INFO] compiling model...")
 # model = SmallerVGGNet.build(width=IMAGE_DIMS[1], height=IMAGE_DIMS[0], depth=IMAGE_DIMS[2], classes=len(lb.classes_))
 # Load our model
-model = densenet121_model(img_rows=224, img_cols=224, color_type=3, num_classes=10)
+model = densenet121_model(img_rows=IMAGE_DIMS[0], img_cols=IMAGE_DIMS[1], color_type=3, num_classes=N_CLASSES)
 opt = Adam(lr=INIT_LR, decay=INIT_LR / EPOCHS)
 model.compile(loss="categorical_crossentropy", optimizer=opt, metrics=["accuracy"])
 

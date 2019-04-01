@@ -1,5 +1,8 @@
 from keras.optimizers import SGD
-from keras.layers import Input, merge, ZeroPadding2D
+import tensorflow as tf
+from tensorflow import keras
+
+from keras.layers import Input, merge, ZeroPadding2D, concatenate
 from keras.layers.core import Dense, Dropout, Activation
 from keras.layers.convolutional import Convolution2D
 from keras.layers.pooling import AveragePooling2D, GlobalAveragePooling2D, MaxPooling2D
@@ -55,7 +58,7 @@ def densenet121_model(img_rows, img_cols, color_type=1, nb_dense_block=4, growth
 
     # From architecture for ImageNet (Table 1 in the paper)
     nb_filter = 64
-    nb_layers = [6, 12, 24, 16] # For DenseNet-121
+    nb_layers = [6, 8, 8, 8] # For DenseNet-121
 
     # Initial convolution
     x = ZeroPadding2D((3, 3), name='conv1_zeropadding')(img_input)
@@ -82,24 +85,9 @@ def densenet121_model(img_rows, img_cols, color_type=1, nb_dense_block=4, growth
     x = Scale(axis=concat_axis, name='conv'+str(final_stage)+'_blk_scale')(x)
     x = Activation('relu', name='relu'+str(final_stage)+'_blk')(x)
 
-    x_fc = GlobalAveragePooling2D(name='pool'+str(final_stage))(x)
-    x_fc = Dense(1000, name='fc6')(x_fc)
-    x_fc = Activation('softmax', name='prob')(x_fc)
-
-    model = Model(img_input, x_fc, name='densenet')
-
-    # if K.image_dim_ordering() == 'th':
-    #   # Use pre-trained weights for Theano backend
-    #   weights_path = 'imagenet_models/densenet121_weights_th.h5'
-    # else:
-    #   # Use pre-trained weights for Tensorflow backend
-    #   weights_path = 'imagenet_models/densenet121_weights_tf.h5'
-    #
-    # model.load_weights(weights_path, by_name=True)
-
-    # Truncate and replace softmax layer for transfer learning
-    # Cannot use model.layers.pop() since model is not of Sequential() type
-    # The method below works since pre-trained weights are stored in layers but not in the model
+    # # Truncate and replace softmax layer for transfer learning
+    # # Cannot use model.layers.pop() since model is not of Sequential() type
+    # # The method below works since pre-trained weights are stored in layers but not in the model
     x_newfc = GlobalAveragePooling2D(name='pool'+str(final_stage))(x)
     x_newfc = Dense(num_classes, name='fc6')(x_newfc)
     x_newfc = Activation('softmax', name='prob')(x_newfc)
@@ -198,7 +186,7 @@ def dense_block(x, stage, nb_layers, nb_filter, growth_rate, dropout_rate=None, 
     for i in range(nb_layers):
         branch = i+1
         x = conv_block(concat_feat, stage, branch, growth_rate, dropout_rate, weight_decay)
-        concat_feat = merge([concat_feat, x], mode='concat', concat_axis=concat_axis, name='concat_'+str(stage)+'_'+str(branch))
+        concat_feat = concatenate([concat_feat, x], axis=concat_axis, name='concat_'+str(stage)+'_'+str(branch))
 
         if grow_nb_filters:
             nb_filter += growth_rate
