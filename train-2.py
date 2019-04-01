@@ -6,14 +6,11 @@
 import matplotlib
 
 matplotlib.use("Agg")
-import tensorflow as tf
-from tensorflow import keras
-# import the necessary packages
 from keras.preprocessing.image import ImageDataGenerator
 from keras.optimizers import Adam
 from keras.preprocessing.image import img_to_array
 from sklearn.preprocessing import LabelBinarizer
-from sklearn.model_selection import train_test_split
+from keras.callbacks import ModelCheckpoint
 from pyimagesearch.smallervggnet import SmallerVGGNet
 import matplotlib.pyplot as plt
 from imutils import paths
@@ -36,7 +33,6 @@ def load_dataset(imagePaths):
         image = cv2.resize(image, (IMAGE_DIMS[1], IMAGE_DIMS[0]))
         image = img_to_array(image)
         data.append(image)
-
         # extract the class label from the image path and update the
         # labels list
         label = imagePath.split(os.path.sep)[-2]
@@ -75,72 +71,52 @@ args = vars(ap.parse_args())
 EPOCHS = 10
 INIT_LR = 1e-3
 BS = 16
-IMAGE_DIMS = (64, 64, 3)
-N_CLASESS = 2
+IMAGE_DIMS = (224, 224, 3)
 
-# initialize the data and labels
-
-
-# grab the image paths and randomly shuffle them
+# grab the train image paths and randomly shuffle them
 print("[INFO] loading images...")
 imagePaths = sorted(list(paths.list_images(os.path.join(args["dataset"], "train"))))
 random.seed(42)
 random.shuffle(imagePaths)
-
 trainX, trainY, lb = load_dataset(imagePaths)
+
+# grab the test image paths and randomly shuffle them
 imagePaths = sorted(list(paths.list_images(os.path.join(args["dataset"], "test"))))
 random.seed(42)
 random.shuffle(imagePaths)
-
 testX, testY, lb = load_dataset(imagePaths)
-# partition the data into training and testing splits using 80% of
-# the data for training and the remaining 20% for testing
-# (trainX, testX, trainY, testY) = train_test_split(data,
-#                                                   labels, test_size=0.2, random_state=42)
 
 # construct the image generator for data augmentation
 aug = ImageDataGenerator(rotation_range=25, width_shift_range=0.1,
 	height_shift_range=0.1, shear_range=0.2, zoom_range=0.2,
 	horizontal_flip=True, fill_mode="nearest")
 
-aug = ImageDataGenerator()
-
 # initialize the model
 print("[INFO] compiling model...")
 # model = SmallerVGGNet.build(width=IMAGE_DIMS[1], height=IMAGE_DIMS[0], depth=IMAGE_DIMS[2], classes=len(lb.classes_))
 # Load our model
 model = densenet121_model(img_rows=IMAGE_DIMS[0], img_cols=IMAGE_DIMS[1], color_type=IMAGE_DIMS[2], num_classes=len(lb.classes_))
+
 opt = Adam(lr=INIT_LR, decay=INIT_LR / EPOCHS)
 model.compile(loss="categorical_crossentropy", optimizer=opt, metrics=["accuracy"])
 
-checkpoint_path = os.path.join(args["ckpt_dir"], "cp-{epoch:04d}.ckpt")
-checkpoint_dir = os.path.dirname(checkpoint_path)
-
-# Create checkpoint callback
-cp_callback = tf.keras.callbacks.ModelCheckpoint(
-	checkpoint_path, save_weights_only=True, verbose=1,
-	# Save weights, every 5-epochs.
-	period=5)
-# load the weights if saved before
+# checkpoint
+filepath= os.path.join(args["ckpt_dir"], "weights.best.hdf5")
+checkpoint = ModelCheckpoint(filepath, monitor='val_acc', verbose=1, save_best_only=True, mode='max')
+callbacks_list = [checkpoint]
 if args["restore_from"] is not None:
     if os.path.isdir(args["restore_from"]):
-        latest_point = tf.train.latest_checkpoint(args["ckpt_dir"])
-        model.load_weights(latest_point)
+        model.load_weights(filepath)
+
 # train the network
 print("[INFO] training network...")
-# model.save_weights(checkpoint_path.format(epoch=0))
-# H = model.fit(
-#     aug.flow(trainX, trainY, batch_size=BS),
-#     validation_data=(testX, testY),
-#     steps_per_epoch=len(trainX) // BS,
-#     epochs=EPOCHS, verbose=1,
-# 	callbacks = [cp_callback])
+
 H = model.fit_generator(
     aug.flow(trainX, trainY, batch_size=BS),
     validation_data=(testX, testY),
     steps_per_epoch=len(trainX) // BS,
     epochs=EPOCHS, verbose=1,
-    callbacks=[cp_callback])
+    callbacks=callbacks_list)
 
 # save the model to disk
 print("[INFO] serializing network...")
