@@ -69,7 +69,7 @@ args = vars(ap.parse_args())
 # batch size, and image dimensions
 EPOCHS = 100
 INIT_LR = 1e-3
-BS = 32
+BS = 16
 IMAGE_DIMS = (224, 224, 3)
 
 # initialize the data and labels
