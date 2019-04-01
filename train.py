@@ -23,6 +23,7 @@ import pickle
 import cv2
 import os
 
+from pyimagesearch.densenet_model import densenet121_model
 
 def load_dataset(imagePaths):
     data = []
@@ -69,7 +70,7 @@ args = vars(ap.parse_args())
 EPOCHS = 100
 INIT_LR = 1e-3
 BS = 32
-IMAGE_DIMS = (64, 64, 3)
+IMAGE_DIMS = (224, 224, 3)
 
 # initialize the data and labels
 
@@ -100,8 +101,9 @@ aug = ImageDataGenerator()
 
 # initialize the model
 print("[INFO] compiling model...")
-model = SmallerVGGNet.build(width=IMAGE_DIMS[1], height=IMAGE_DIMS[0], depth=IMAGE_DIMS[2], classes=len(lb.classes_))
-
+# model = SmallerVGGNet.build(width=IMAGE_DIMS[1], height=IMAGE_DIMS[0], depth=IMAGE_DIMS[2], classes=len(lb.classes_))
+# Load our model
+model = densenet121_model(img_rows=224, img_cols=224, color_type=3, num_classes=10)
 opt = Adam(lr=INIT_LR, decay=INIT_LR / EPOCHS)
 model.compile(loss="categorical_crossentropy", optimizer=opt, metrics=["accuracy"])
 

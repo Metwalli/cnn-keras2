@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from keras.optimizers import SGD
 from keras.layers import Input, merge, ZeroPadding2D
 from keras.layers.core import Dense, Dropout, Activation
@@ -11,16 +9,13 @@ import keras.backend as K
 import argparse
 from sklearn.metrics import log_loss
 
-from custom_layers.scale_layer import Scale
+from .custom_layers.scale_layer import Scale
 
-from load_cifar10 import load_cifar10_data
 
-from load_vireo import load_vireo_data
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--data_dir', default='c:\data\\food_05_300x300\\all-train',
                     help="Directory containing the dataset")
-
 def densenet121_model(img_rows, img_cols, color_type=1, nb_dense_block=4, growth_rate=32, nb_filter=64, reduction=0.5, dropout_rate=0.0, weight_decay=1e-4, num_classes=None):
     '''
     DenseNet 121 Model for Keras
@@ -112,8 +107,8 @@ def densenet121_model(img_rows, img_cols, color_type=1, nb_dense_block=4, growth
     model = Model(img_input, x_newfc)
 
     # Learning rate is changed to 0.001
-    sgd = SGD(lr=1e-3, decay=1e-6, momentum=0.9, nesterov=True)
-    model.compile(optimizer=sgd, loss='categorical_crossentropy', metrics=['accuracy'])
+    # sgd = SGD(lr=1e-3, decay=1e-6, momentum=0.9, nesterov=True)
+    # model.compile(optimizer=sgd, loss='categorical_crossentropy', metrics=['accuracy'])
 
     return model
 
@@ -209,38 +204,3 @@ def dense_block(x, stage, nb_layers, nb_filter, growth_rate, dropout_rate=None, 
             nb_filter += growth_rate
 
     return concat_feat, nb_filter
-
-if __name__ == '__main__':
-
-    args = parser.parse_args()
-    data_dir = args.data_dir
-    # Example to fine-tune on 3000 samples from Cifar10
-
-    img_rows, img_cols = 224, 224 # Resolution of inputs
-    channel = 3
-    num_classes = 2
-    batch_size = 16
-    nb_epoch = 25
-
-    # Load Cifar10 data. Please implement your own load_data() module for your own dataset
-    X_train, Y_train, X_valid, Y_valid = load_cifar10_data(img_rows, img_cols)
-    # X_train, Y_train, X_valid, Y_valid = load_vireo_data(data_dir, img_rows)
-
-
-    # Load our model
-    model = densenet121_model(img_rows=img_rows, img_cols=img_cols, color_type=channel, num_classes=num_classes)
-
-    # Start Fine-tuning
-    model.fit(X_train, Y_train,
-              batch_size=batch_size,
-              nb_epoch=nb_epoch,
-              shuffle=True,
-              verbose=1,
-              validation_data=(X_valid, Y_valid),
-              )
-
-    # Make predictions
-    predictions_valid = model.predict(X_valid, batch_size=batch_size, verbose=1)
-
-    # Cross-entropy loss score
-    score = log_loss(Y_valid, predictions_valid)
