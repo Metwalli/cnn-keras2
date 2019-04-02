@@ -4,7 +4,7 @@
 
 # set the matplotlib backend so figures can be saved in the background
 import matplotlib
-
+import time
 matplotlib.use("Agg")
 from keras.preprocessing.image import ImageDataGenerator
 from keras.optimizers import Adam
@@ -20,8 +20,8 @@ import random
 import pickle
 import cv2
 import os
-
-from pyimagesearch.densenet_model import densenet121_model
+from tensorflow.python.keras.callbacks import TensorBoard
+from pyimagesearch.densenet_updated import densenet_model
 
 def load_dataset(imagePaths):
     data = []
@@ -58,17 +58,13 @@ ap.add_argument("-c", "--ckpt_dir", required=True,
                 help="path of check points (i.e., directory of check points)")
 ap.add_argument("-r", "--restore_from", required=False,
                 help="path of saved checkpoints (i.e., directory of check points)")
-ap.add_argument("-m", "--model", required=True,
-                help="path to output model")
-ap.add_argument("-l", "--labelbin", required=True,
-                help="path to output label binarizer")
 ap.add_argument("-p", "--plot", type=str, default="plot.png",
                 help="path to output accuracy/loss plot")
 args = vars(ap.parse_args())
 # /home/ai309/metwalli/project-test-1/dense_food/experiments/vireo10_aug4
 # initialize the number of epochs to train for, initial learning rate,
 # batch size, and image dimensions
-EPOCHS = 10
+EPOCHS = 5
 INIT_LR = 1e-3
 BS = 16
 IMAGE_DIMS = (224, 224, 3)
@@ -95,38 +91,31 @@ aug = ImageDataGenerator(rotation_range=25, width_shift_range=0.1,
 print("[INFO] compiling model...")
 # model = SmallerVGGNet.build(width=IMAGE_DIMS[1], height=IMAGE_DIMS[0], depth=IMAGE_DIMS[2], classes=len(lb.classes_))
 # Load our model
-model = densenet121_model(img_rows=IMAGE_DIMS[0], img_cols=IMAGE_DIMS[1], color_type=IMAGE_DIMS[2], num_classes=len(lb.classes_))
+model = densenet_model(img_rows=IMAGE_DIMS[0], img_cols=IMAGE_DIMS[1], color_type=IMAGE_DIMS[2], num_classes=len(lb.classes_))
 
-opt = Adam(lr=INIT_LR, decay=INIT_LR / EPOCHS)
-model.compile(loss="categorical_crossentropy", optimizer=opt, metrics=["accuracy"])
-
+tensorBoard = TensorBoard(log_dir='logs/{}'.format(time.time()))
 # checkpoint
 filepath= os.path.join(args["ckpt_dir"], "weights.best.hdf5")
 checkpoint = ModelCheckpoint(filepath, monitor='val_acc', verbose=1, save_best_only=True, mode='max')
-callbacks_list = [checkpoint]
+callbacks_list = checkpoint
 if args["restore_from"] is not None:
     if os.path.isdir(args["restore_from"]):
         model.load_weights(filepath)
 
 # train the network
 print("[INFO] training network...")
-
+opt = Adam(lr=INIT_LR, decay=INIT_LR / EPOCHS)
+model.compile(loss="categorical_crossentropy", optimizer=opt, metrics=["accuracy"])
 H = model.fit_generator(
     aug.flow(trainX, trainY, batch_size=BS),
     validation_data=(testX, testY),
     steps_per_epoch=len(trainX) // BS,
     epochs=EPOCHS, verbose=1,
-    callbacks=callbacks_list)
+    callbacks=[callbacks_list, tensorBoard])
 
 # save the model to disk
 print("[INFO] serializing network...")
 model.save(args["model"])
-
-# save the label binarizer to disk
-# print("[INFO] serializing label binarizer...")
-# f = open(args["labelbin"], "wb")
-# f.write(pickle.dumps(lb))
-# f.close()
 
 # plot the training loss and accuracy
 plt.style.use("ggplot")
