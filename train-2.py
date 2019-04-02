@@ -83,10 +83,10 @@ random.shuffle(imagePaths)
 testX, testY, lb = load_dataset(imagePaths)
 
 # construct the image generator for data augmentation
-# aug = ImageDataGenerator(rotation_range=25, width_shift_range=0.1,
-# 	height_shift_range=0.1, shear_range=0.2, zoom_range=0.2,
-# 	horizontal_flip=True, fill_mode="nearest")
-aug = ImageDataGenerator()
+aug = ImageDataGenerator(rotation_range=25, width_shift_range=0.1,
+	height_shift_range=0.1, shear_range=0.2, zoom_range=0.2,
+	horizontal_flip=True, fill_mode="nearest")
+
 # initialize the model
 print("[INFO] compiling model...")
 # model = SmallerVGGNet.build(width=IMAGE_DIMS[1], height=IMAGE_DIMS[0], depth=IMAGE_DIMS[2], classes=len(lb.classes_))

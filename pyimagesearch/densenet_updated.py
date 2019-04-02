@@ -59,8 +59,7 @@ def densenet_model(img_rows, img_cols, color_type=1, nb_dense_block=4, growth_ra
 
     # From architecture for ImageNet (Table 1 in the paper)
     nb_filter = nb_filter
-    nb_layers = [6, 8, 8, 8] # For DenseNet-121
-
+    nb_layers = [6, 12, 24, 16]  # For DenseNet-121
     # Initial convolution
     with tf.name_scope("initial_convolution"):
         x = ZeroPadding2D((3, 3), name='conv1_zeropadding')(img_input)
@@ -89,6 +88,20 @@ def densenet_model(img_rows, img_cols, color_type=1, nb_dense_block=4, growth_ra
         x = Scale(axis=concat_axis, name='conv'+str(final_stage)+'_blk_scale')(x)
         x = Activation('relu', name='relu'+str(final_stage)+'_blk')(x)
 
+        x_fc = GlobalAveragePooling2D(name='pool' + str(final_stage))(x)
+        x_fc = Dense(1000, name='fc6')(x_fc)
+        x_fc = Activation('softmax', name='prob')(x_fc)
+
+        model = Model(img_input, x_fc, name='densenet')
+
+        if K.image_dim_ordering() == 'th':
+            # Use pre-trained weights for Theano backend
+            weights_path = 'pretrained_models/densenet121_weights_th.h5'
+        else:
+            # Use pre-trained weights for Tensorflow backend
+            weights_path = 'pretrained_models/densenet121_weights_tf.h5'
+
+        model.load_weights(weights_path, by_name=True)
     # # Truncate and replace softmax layer for transfer learning
     # # Cannot use model.layers.pop() since model is not of Sequential() type
     # # The method below works since pre-trained weights are stored in layers but not in the model
