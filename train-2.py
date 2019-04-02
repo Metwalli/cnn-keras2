@@ -64,8 +64,8 @@ args = vars(ap.parse_args())
 # /home/ai309/metwalli/project-test-1/dense_food/experiments/vireo10_aug4
 # initialize the number of epochs to train for, initial learning rate,
 # batch size, and image dimensions
-EPOCHS = 5
-INIT_LR = 1e-3
+EPOCHS = 10
+INIT_LR = 1e-4
 BS = 16
 IMAGE_DIMS = (224, 224, 3)
 
@@ -83,10 +83,10 @@ random.shuffle(imagePaths)
 testX, testY, lb = load_dataset(imagePaths)
 
 # construct the image generator for data augmentation
-aug = ImageDataGenerator(rotation_range=25, width_shift_range=0.1,
-	height_shift_range=0.1, shear_range=0.2, zoom_range=0.2,
-	horizontal_flip=True, fill_mode="nearest")
-
+# aug = ImageDataGenerator(rotation_range=25, width_shift_range=0.1,
+# 	height_shift_range=0.1, shear_range=0.2, zoom_range=0.2,
+# 	horizontal_flip=True, fill_mode="nearest")
+aug = ImageDataGenerator()
 # initialize the model
 print("[INFO] compiling model...")
 # model = SmallerVGGNet.build(width=IMAGE_DIMS[1], height=IMAGE_DIMS[0], depth=IMAGE_DIMS[2], classes=len(lb.classes_))
@@ -113,9 +113,6 @@ H = model.fit_generator(
     epochs=EPOCHS, verbose=1,
     callbacks=[callbacks_list, tensorBoard])
 
-# save the model to disk
-print("[INFO] serializing network...")
-model.save(args["model"])
 
 # plot the training loss and accuracy
 plt.style.use("ggplot")
