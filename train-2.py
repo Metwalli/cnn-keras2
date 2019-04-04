@@ -22,6 +22,8 @@ import cv2
 import os
 from tensorflow.python.keras.callbacks import TensorBoard
 from pyimagesearch.densenet_updated import densenet_model
+from pyimagesearch.densenet_model import densenet121_model
+
 
 def load_dataset(imagePaths):
     data = []
@@ -92,6 +94,7 @@ print("[INFO] compiling model...")
 # model = SmallerVGGNet.build(width=IMAGE_DIMS[1], height=IMAGE_DIMS[0], depth=IMAGE_DIMS[2], classes=len(lb.classes_))
 # Load our model
 model = densenet_model(img_rows=IMAGE_DIMS[0], img_cols=IMAGE_DIMS[1], color_type=IMAGE_DIMS[2], num_classes=len(lb.classes_))
+# model = densenet121_model(img_rows=IMAGE_DIMS[0], img_cols=IMAGE_DIMS[1], color_type=IMAGE_DIMS[2], num_classes=len(lb.classes_))
 
 tensorBoard = TensorBoard(log_dir='logs/{}'.format(time.time()))
 # checkpoint
