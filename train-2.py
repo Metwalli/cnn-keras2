@@ -68,8 +68,8 @@ args = vars(ap.parse_args())
 # batch size, and image dimensions
 EPOCHS = 10
 INIT_LR = 1e-4
-BS = 16
-IMAGE_DIMS = (224, 224, 3)
+BS = 2
+IMAGE_DIMS = (64, 64, 3)
 
 # grab the train image paths and randomly shuffle them
 print("[INFO] loading images...")
@@ -93,8 +93,8 @@ aug = ImageDataGenerator(rotation_range=25, width_shift_range=0.1,
 print("[INFO] compiling model...")
 # model = SmallerVGGNet.build(width=IMAGE_DIMS[1], height=IMAGE_DIMS[0], depth=IMAGE_DIMS[2], classes=len(lb.classes_))
 # Load our model
-model = densenet_model(img_rows=IMAGE_DIMS[0], img_cols=IMAGE_DIMS[1], color_type=IMAGE_DIMS[2], num_classes=len(lb.classes_))
-# model = densenet121_model(img_rows=IMAGE_DIMS[0], img_cols=IMAGE_DIMS[1], color_type=IMAGE_DIMS[2], num_classes=len(lb.classes_))
+# model = densenet_model(img_rows=IMAGE_DIMS[0], img_cols=IMAGE_DIMS[1], color_type=IMAGE_DIMS[2], num_classes=len(lb.classes_))
+model = densenet121_model(img_rows=IMAGE_DIMS[0], img_cols=IMAGE_DIMS[1], color_type=IMAGE_DIMS[2], num_classes=len(lb.classes_))
 
 tensorBoard = TensorBoard(log_dir='logs/{}'.format(time.time()))
 # checkpoint

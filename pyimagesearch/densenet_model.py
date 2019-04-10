@@ -19,7 +19,7 @@ from .custom_layers.scale_layer import Scale
 parser = argparse.ArgumentParser()
 parser.add_argument('--data_dir', default='c:\data\\food_05_300x300\\all-train',
                     help="Directory containing the dataset")
-def densenet121_model(img_rows, img_cols, color_type=1, nb_dense_block=4, growth_rate=32, nb_filter=64, reduction=0.5, dropout_rate=0.0, weight_decay=1e-4, num_classes=None):
+def densenet121_model(img_input, nb_dense_block=4, growth_rate=32, nb_filter=64, reduction=0.5, dropout_rate=0.0, weight_decay=1e-4, num_classes=None):
     '''
     DenseNet 121 Model for Keras
 
@@ -51,10 +51,10 @@ def densenet121_model(img_rows, img_cols, color_type=1, nb_dense_block=4, growth
     global concat_axis
     if K.image_dim_ordering() == 'tf':
       concat_axis = 3
-      img_input = Input(shape=(img_rows, img_cols, color_type), name='data')
+      # img_input = Input(shape=(img_rows, img_cols, color_type), name='data')
     else:
       concat_axis = 1
-      img_input = Input(shape=(color_type, img_rows, img_cols), name='data')
+      # img_input = Input(shape=(color_type, img_rows, img_cols), name='data')
 
     # From architecture for ImageNet (Table 1 in the paper)
     nb_filter = 64
@@ -85,6 +85,20 @@ def densenet121_model(img_rows, img_cols, color_type=1, nb_dense_block=4, growth
     x = Scale(axis=concat_axis, name='conv'+str(final_stage)+'_blk_scale')(x)
     x = Activation('relu', name='relu'+str(final_stage)+'_blk')(x)
 
+    x_fc = GlobalAveragePooling2D(name='pool' + str(final_stage))(x)
+    x_fc = Dense(1000, name='fc6')(x_fc)
+    x_fc = Activation('softmax', name='prob')(x_fc)
+
+    model = Model(img_input, x_fc, name='densenet')
+
+    if K.image_dim_ordering() == 'th':
+        # Use pre-trained weights for Theano backend
+        weights_path = 'pretrained_models/densenet121_weights_th.h5'
+    else:
+        # Use pre-trained weights for Tensorflow backend
+        weights_path = 'pretrained_models/densenet121_weights_tf.h5'
+
+    model.load_weights(weights_path, by_name=True)
     # # Truncate and replace softmax layer for transfer learning
     # # Cannot use model.layers.pop() since model is not of Sequential() type
     # # The method below works since pre-trained weights are stored in layers but not in the model
@@ -92,13 +106,13 @@ def densenet121_model(img_rows, img_cols, color_type=1, nb_dense_block=4, growth
     x_newfc = Dense(num_classes, name='fc6')(x_newfc)
     x_newfc = Activation('softmax', name='prob')(x_newfc)
 
-    model = Model(img_input, x_newfc)
+    # model = Model(img_input, x_newfc)
 
     # Learning rate is changed to 0.001
     # sgd = SGD(lr=1e-3, decay=1e-6, momentum=0.9, nesterov=True)
     # model.compile(optimizer=sgd, loss='categorical_crossentropy', metrics=['accuracy'])
 
-    return model
+    return x_newfc
 
 
 def conv_block(x, stage, branch, nb_filter, dropout_rate=None, weight_decay=1e-4):
