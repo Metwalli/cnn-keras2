@@ -19,7 +19,9 @@ from .custom_layers.scale_layer import Scale
 parser = argparse.ArgumentParser()
 parser.add_argument('--data_dir', default='c:\data\\food_05_300x300\\all-train',
                     help="Directory containing the dataset")
-def densenet121_model(img_input, nb_dense_block=4, growth_rate=32, nb_filter=64, reduction=0.5, dropout_rate=0.0, weight_decay=1e-4, num_classes=None):
+
+
+def densenet121_model(img_input, nb_dense_block=4, growth_rate=32, nb_filter=64, reduction=0.5, dropout_rate=0.0, weight_decay=1e-4, use_pretrained=True, num_classes=None):
     '''
     DenseNet 121 Model for Keras
 
@@ -59,7 +61,7 @@ def densenet121_model(img_input, nb_dense_block=4, growth_rate=32, nb_filter=64,
     # From architecture for ImageNet (Table 1 in the paper)
     nb_filter = 64
     nb_layers = [6, 12, 24, 16] # For DenseNet-121
-
+    # with tf.name_scope("initial_convolution"):
     # Initial convolution
     x = ZeroPadding2D((3, 3), name='conv1_zeropadding')(img_input)
     x = Convolution2D(nb_filter, 7, 7, subsample=(2, 2), name='conv1', bias=False)(x)
@@ -72,6 +74,7 @@ def densenet121_model(img_input, nb_dense_block=4, growth_rate=32, nb_filter=64,
     # Add dense blocks
     for block_idx in range(nb_dense_block - 1):
         stage = block_idx+2
+        # with tf.name_scope("block" + str(stage)):
         x, nb_filter = dense_block(x, stage, nb_layers[block_idx], nb_filter, growth_rate, dropout_rate=dropout_rate, weight_decay=weight_decay)
 
         # Add transition_block
@@ -79,6 +82,7 @@ def densenet121_model(img_input, nb_dense_block=4, growth_rate=32, nb_filter=64,
         nb_filter = int(nb_filter * compression)
 
     final_stage = stage + 1
+    # with tf.name_scope("block" + str(final_stage)):
     x, nb_filter = dense_block(x, final_stage, nb_layers[-1], nb_filter, growth_rate, dropout_rate=dropout_rate, weight_decay=weight_decay)
 
     x = BatchNormalization(epsilon=eps, axis=concat_axis, name='conv'+str(final_stage)+'_blk_bn')(x)
@@ -91,17 +95,16 @@ def densenet121_model(img_input, nb_dense_block=4, growth_rate=32, nb_filter=64,
 
     model = Model(img_input, x_fc, name='densenet')
 
-    if K.image_dim_ordering() == 'th':
-        # Use pre-trained weights for Theano backend
-        weights_path = 'pretrained_models/densenet121_weights_th.h5'
-    else:
-        # Use pre-trained weights for Tensorflow backend
+    # Use pre-trained weights for Tensorflow backend
+    if use_pretrained:
         weights_path = 'pretrained_models/densenet121_weights_tf.h5'
+        model.load_weights(weights_path, by_name=True)
 
-    model.load_weights(weights_path, by_name=True)
     # # Truncate and replace softmax layer for transfer learning
     # # Cannot use model.layers.pop() since model is not of Sequential() type
     # # The method below works since pre-trained weights are stored in layers but not in the model
+
+    # with tf.name_scope("fully_connected"):
     x_newfc = GlobalAveragePooling2D(name='pool'+str(final_stage))(x)
     x_newfc = Dense(num_classes, name='fc6')(x_newfc)
     x_newfc = Activation('softmax', name='prob')(x_newfc)
@@ -130,6 +133,7 @@ def conv_block(x, stage, branch, nb_filter, dropout_rate=None, weight_decay=1e-4
     relu_name_base = 'relu' + str(stage) + '_' + str(branch)
 
     # 1x1 Convolution (Bottleneck layer)
+    # with tf.name_scope(conv_name_base):
     inter_channel = nb_filter * 4
     x = BatchNormalization(epsilon=eps, axis=concat_axis, name=conv_name_base+'_x1_bn')(x)
     x = Scale(axis=concat_axis, name=conv_name_base+'_x1_scale')(x)
@@ -167,7 +171,7 @@ def transition_block(x, stage, nb_filter, compression=1.0, dropout_rate=None, we
     conv_name_base = 'conv' + str(stage) + '_blk'
     relu_name_base = 'relu' + str(stage) + '_blk'
     pool_name_base = 'pool' + str(stage)
-
+    # with tf.name_scope("transition_layer" + str(stage)):
     x = BatchNormalization(epsilon=eps, axis=concat_axis, name=conv_name_base+'_bn')(x)
     x = Scale(axis=concat_axis, name=conv_name_base+'_scale')(x)
     x = Activation('relu', name=relu_name_base)(x)

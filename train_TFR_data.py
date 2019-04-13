@@ -13,7 +13,9 @@ from keras.optimizers import Adam
 from keras.layers import Input
 from keras.models import Model
 from keras.objectives import categorical_crossentropy
-
+from keras.optimizers import SGD
+from keras.callbacks import ModelCheckpoint
+import os
 import matplotlib.pyplot as plt
 import numpy as np
 import argparse
@@ -42,10 +44,13 @@ args = vars(ap.parse_args())
 # batch size, and image dimensions
 EPOCHS = 10
 INIT_LR = 1e-4
-BS = 16
+BS = 1
 CLASSES = 5
-BATCH_SHAPE = [16, 64, 64, 3]
+BATCH_SHAPE = [BS, 224, 224, 3]
 PARALLELISM = 4
+
+use_pretrained = True
+
 
 # grab the train image paths and randomly shuffle them
 print("[INFO] loading images...")
@@ -74,8 +79,10 @@ x_batch_shape = x_train_batch.get_shape().as_list()
 y_batch_shape = y_train_batch.get_shape().as_list()
 
 x_train_input = Input(tensor=x_train_batch, batch_shape=x_batch_shape)
-x_train_out = densenet121_model(img_input=x_train_input, num_classes=CLASSES)
 y_train_in_out = Input(tensor=y_train_batch, batch_shape=y_batch_shape, name='y_labels')
+
+
+x_train_out = densenet121_model(img_input=x_train_input, use_pretrained=use_pretrained, num_classes=CLASSES)
 cce = categorical_crossentropy(y_train_batch, x_train_out)
 model = Model(inputs=[x_train_input], outputs=[x_train_out])
 model.add_loss(cce)
@@ -94,8 +101,8 @@ print("[INFO] compiling model...")
 
 # tensorBoard = TensorBoard(log_dir='logs/{}'.format(time.time()))
 # # checkpoint
-# filepath= os.path.join(args["ckpt_dir"], "weights.best.hdf5")
-# checkpoint = ModelCheckpoint(filepath, monitor='val_acc', verbose=1, save_best_only=True, mode='max')
+filepath= os.path.join(args["ckpt_dir"], "weights.best.hdf5")
+checkpoint = ModelCheckpoint(filepath, monitor='val_acc', verbose=1, save_best_only=True, mode='max')
 # callbacks_list = checkpoint
 # if args["restore_from"] is not None:
 #     if os.path.isdir(args["restore_from"]):
@@ -104,15 +111,16 @@ print("[INFO] compiling model...")
 
 # train the network
 print("[INFO] training network...")
-optimizer = Adam(lr=INIT_LR, decay=INIT_LR / EPOCHS)
-model.compile(loss=None, optimizer=optimizer, metrics=["accuracy"])
+optimizer = SGD(lr=1e-3, decay=1e-6, momentum=0.9, nesterov=True)
+# optimizer = Adam(lr=INIT_LR, decay=INIT_LR / EPOCHS)
+model.compile(optimizer=optimizer, metrics=["accuracy"])
 
 model.summary()
 
 tensorboard = TensorBoard(log_dir='logs/{}'.format(time.time()))
 H = model.fit(epochs=EPOCHS,
           steps_per_epoch=train_size//BS,
-          callbacks=[tensorboard])
+          callbacks=[checkpoint, tensorboard])
 
 model.save_weights('saved_wt.h5')
 
@@ -120,8 +128,10 @@ model.save_weights('saved_wt.h5')
 plt.style.use("ggplot")
 plt.figure()
 N = EPOCHS
+plt.subplot(1)
 plt.plot(np.arange(0, N), H.history["loss"], label="train_loss")
 plt.plot(np.arange(0, N), H.history["val_loss"], label="val_loss")
+plt.subplot(2)
 plt.plot(np.arange(0, N), H.history["acc"], label="train_acc")
 plt.plot(np.arange(0, N), H.history["val_acc"], label="val_acc")
 plt.title("Training Loss and Accuracy")
