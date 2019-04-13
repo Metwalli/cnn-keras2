@@ -47,7 +47,7 @@ INIT_LR = 1e-4
 BS = 1
 CLASSES = 5
 BATCH_SHAPE = [BS, 224, 224, 3]
-PARALLELISM = 4
+PARALLELISM = 32
 
 use_pretrained = True
 
@@ -99,7 +99,7 @@ print("[INFO] compiling model...")
 # model = densenet_model(img_rows=IMAGE_DIMS[0], img_cols=IMAGE_DIMS[1], color_type=IMAGE_DIMS[2], num_classes=len(lb.classes_))
 # model = densenet121_model(img_rows=IMAGE_DIMS[0], img_cols=IMAGE_DIMS[1], color_type=IMAGE_DIMS[2], num_classes=len(lb.classes_))
 
-# tensorBoard = TensorBoard(log_dir='logs/{}'.format(time.time()))
+tensorBoard = TensorBoard(log_dir='logs/{}'.format(time.time()))
 # # checkpoint
 filepath= os.path.join(args["ckpt_dir"], "weights.best.hdf5")
 checkpoint = ModelCheckpoint(filepath, monitor='val_acc', verbose=1, save_best_only=True, mode='max')
