@@ -113,7 +113,7 @@ checkpoint = ModelCheckpoint(filepath, monitor='val_acc', verbose=1, save_best_o
 print("[INFO] training network...")
 optimizer = SGD(lr=1e-3, decay=1e-6, momentum=0.9, nesterov=True)
 # optimizer = Adam(lr=INIT_LR, decay=INIT_LR / EPOCHS)
-model.compile(optimizer=optimizer, metrics=["accuracy"])
+model.compile(optimizer=optimizer, loss=None, metrics=["accuracy"])
 
 model.summary()
 
