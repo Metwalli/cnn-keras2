@@ -44,7 +44,7 @@ args = vars(ap.parse_args())
 # batch size, and image dimensions
 EPOCHS = 10
 INIT_LR = 1e-4
-BS = 1
+BS = 16
 CLASSES = 5
 BATCH_SHAPE = [BS, 224, 224, 3]
 PARALLELISM = 32
@@ -128,10 +128,8 @@ model.save_weights('saved_wt.h5')
 plt.style.use("ggplot")
 plt.figure()
 N = EPOCHS
-plt.subplot(1)
 plt.plot(np.arange(0, N), H.history["loss"], label="train_loss")
 plt.plot(np.arange(0, N), H.history["val_loss"], label="val_loss")
-plt.subplot(2)
 plt.plot(np.arange(0, N), H.history["acc"], label="train_acc")
 plt.plot(np.arange(0, N), H.history["val_acc"], label="val_acc")
 plt.title("Training Loss and Accuracy")
