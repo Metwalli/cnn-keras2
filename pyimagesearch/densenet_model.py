@@ -21,7 +21,7 @@ parser.add_argument('--data_dir', default='c:\data\\food_05_300x300\\all-train',
                     help="Directory containing the dataset")
 
 
-def densenet121_model(img_input, nb_dense_block=4, growth_rate=32, nb_filter=64, reduction=0.5, dropout_rate=0.0, weight_decay=1e-4, use_pretrained=True, num_classes=None):
+def densenet121_model(img_rows=224, img_cols=224, color_type=3, nb_dense_block=4, growth_rate=32, nb_filter=64, reduction=0.5, dropout_rate=0.0, weight_decay=1e-4, use_pretrained=True, num_classes=None):
     '''
     DenseNet 121 Model for Keras
 
@@ -53,10 +53,10 @@ def densenet121_model(img_input, nb_dense_block=4, growth_rate=32, nb_filter=64,
     global concat_axis
     if K.image_dim_ordering() == 'tf':
       concat_axis = 3
-      # img_input = Input(shape=(img_rows, img_cols, color_type), name='data')
+      img_input = Input(shape=(img_rows, img_cols, color_type), name='data')
     else:
       concat_axis = 1
-      # img_input = Input(shape=(color_type, img_rows, img_cols), name='data')
+      img_input = Input(shape=(color_type, img_rows, img_cols), name='data')
 
     # From architecture for ImageNet (Table 1 in the paper)
     nb_filter = 64
@@ -109,13 +109,13 @@ def densenet121_model(img_input, nb_dense_block=4, growth_rate=32, nb_filter=64,
     x_newfc = Dense(num_classes, name='fc6')(x_newfc)
     x_newfc = Activation('softmax', name='prob')(x_newfc)
 
-    # model = Model(img_input, x_newfc)
+    model = Model(img_input, x_newfc)
 
     # Learning rate is changed to 0.001
     # sgd = SGD(lr=1e-3, decay=1e-6, momentum=0.9, nesterov=True)
     # model.compile(optimizer=sgd, loss='categorical_crossentropy', metrics=['accuracy'])
 
-    return x_newfc
+    return model
 
 
 def conv_block(x, stage, branch, nb_filter, dropout_rate=None, weight_decay=1e-4):

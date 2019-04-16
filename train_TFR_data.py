@@ -32,7 +32,7 @@ ap.add_argument("-t", "--train_tf", required=True,
                 help="path to train TFRecord file")
 ap.add_argument("-e", "--eval_tf", required=True,
 				help="Evalu TFRecord File")
-ap.add_argument("-c", "--ckpt_dir", required=True,
+ap.add_argument("-c", "--ckpt_dir", required=False,
                 help="path of check points (i.e., directory of check points)")
 ap.add_argument("-r", "--restore_from", required=False,
                 help="path of saved checkpoints (i.e., directory of check points)")
@@ -42,14 +42,14 @@ args = vars(ap.parse_args())
 # /home/ai309/metwalli/project-test-1/dense_food/experiments/vireo10_aug4
 # initialize the number of epochs to train for, initial learning rate,
 # batch size, and image dimensions
-EPOCHS = 10
+EPOCHS = 2
 INIT_LR = 1e-4
-BS = 16
-CLASSES = 5
-BATCH_SHAPE = [BS, 224, 224, 3]
-PARALLELISM = 32
+BS = 2
+CLASSES = 3
+BATCH_SHAPE = [BS, 64, 64, 3]
+PARALLELISM = 4
 
-use_pretrained = True
+use_pretrained = False
 
 
 # grab the train image paths and randomly shuffle them
@@ -81,8 +81,8 @@ y_batch_shape = y_train_batch.get_shape().as_list()
 x_train_input = Input(tensor=x_train_batch, batch_shape=x_batch_shape)
 y_train_in_out = Input(tensor=y_train_batch, batch_shape=y_batch_shape, name='y_labels')
 
-
 x_train_out = densenet121_model(img_input=x_train_input, use_pretrained=use_pretrained, num_classes=CLASSES)
+model = VGGNet16.build(width=64, height=64, depth=3, classes=3)
 cce = categorical_crossentropy(y_train_batch, x_train_out)
 model = Model(inputs=[x_train_input], outputs=[x_train_out])
 model.add_loss(cce)
@@ -99,10 +99,10 @@ print("[INFO] compiling model...")
 # model = densenet_model(img_rows=IMAGE_DIMS[0], img_cols=IMAGE_DIMS[1], color_type=IMAGE_DIMS[2], num_classes=len(lb.classes_))
 # model = densenet121_model(img_rows=IMAGE_DIMS[0], img_cols=IMAGE_DIMS[1], color_type=IMAGE_DIMS[2], num_classes=len(lb.classes_))
 
-tensorBoard = TensorBoard(log_dir='logs/{}'.format(time.time()))
+# tensorBoard = TensorBoard(log_dir='logs/{}'.format(time.time()))
 # # checkpoint
-filepath= os.path.join(args["ckpt_dir"], "weights.best.hdf5")
-checkpoint = ModelCheckpoint(filepath, monitor='val_acc', verbose=1, save_best_only=True, mode='max')
+# filepath= os.path.join(args["ckpt_dir"], "weights.best.hdf5")
+# checkpoint = ModelCheckpoint(filepath, monitor='val_acc', verbose=1, save_best_only=True, mode='max')
 # callbacks_list = checkpoint
 # if args["restore_from"] is not None:
 #     if os.path.isdir(args["restore_from"]):
@@ -111,16 +111,20 @@ checkpoint = ModelCheckpoint(filepath, monitor='val_acc', verbose=1, save_best_o
 
 # train the network
 print("[INFO] training network...")
-optimizer = SGD(lr=1e-3, decay=1e-6, momentum=0.9, nesterov=True)
+# optimizer = SGD(lr=1e-3, decay=1e-6, momentum=0.9, nesterov=True)
 # optimizer = Adam(lr=INIT_LR, decay=INIT_LR / EPOCHS)
-model.compile(optimizer=optimizer, loss=None, metrics=["accuracy"])
+# model.compile(loss=None, optimizer=optimizer, metrics=["accuracy"])
 
 model.summary()
 
+optimizer = SGD(lr=1e-3, decay=1e-6, momentum=0.9, nesterov=True)
+model.compile(loss=None, optimizer=optimizer, metrics=["accuracy"])
+
+
 tensorboard = TensorBoard(log_dir='logs/{}'.format(time.time()))
 H = model.fit(epochs=EPOCHS,
-          steps_per_epoch=train_size//BS,
-          callbacks=[checkpoint, tensorboard])
+          steps_per_epoch=train_size//BS)
+          # callbacks=[checkpoint, tensorboard])
 
 model.save_weights('saved_wt.h5')
 
